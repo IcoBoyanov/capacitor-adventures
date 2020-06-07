@@ -1,61 +1,61 @@
-
-/*
-* Getting Started example sketch for nRF24L01+ radios
-* This is a very basic example of how to send data from one node to another
-* Updated: Dec 2014 by TMRh20
-*/
-
+#include "Arduino.h"
 #include <SPI.h>
-#include "RF24.h"
+#include <RF24.h>
 
-/* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
+// This is just the way the RF24 library works:
+// Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
 RF24 radio(7, 8);
-/**********************************************************/
 
-byte addresses[][6] = {"trans", "rciev"};
+byte addresses[][6] = {"10000","20000"};
 
-struct Data
-{
-    char str[13]= "radio, gugu!";
-    unsigned long timestamp;
-};
-Data data;
 
-const int PAYLOAD_SIZE = 4;
+const unsigned int PAYLOAD_SIZE = 32;
 char payload[PAYLOAD_SIZE];
 
-void setup()
-{
-  Serial.begin(115200);
-  radio.begin();
-  radio.setAddressWidth(5);
-  // Set the PA Level low to prevent power supply related issues since this is a
-  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_HIGH);
-  radio.setAutoAck(false);
-  radio.setDataRate(rf24_datarate_e::RF24_250KBPS);
-  
-  radio.disableDynamicPayloads();
-  radio.setPayloadSize(PAYLOAD_SIZE);
-  Serial.println(radio.getPALevel());
-  Serial.println(radio.getARC());
-    // Open a writing and reading pipe on each radio, with opposite addresses
-    // radio.openWritingPipe(addresses[1]);
-    radio.openReadingPipe(1, addresses[0]);
 
-    // Start the radio listening for data
-    radio.startListening();
+// -----------------------------------------------------------------------------
+// SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP
+// -----------------------------------------------------------------------------
+void setup() {
+  Serial.begin(57600);
+  Serial.println("THIS IS THE RECEIVER CODE - YOU NEED THE OTHER ARDUINO TO TRANSMIT");
+
+  // Initiate the radio object
+  radio.begin();
+
+  // Set the transmit power to lowest available to prevent power supply related issues
+  radio.setPALevel(RF24_PA_MAX);
+
+  // Set the speed of the transmission to the quickest available
+  radio.setDataRate(RF24_250KBPS);
+
+  // Use a channel unlikely to be used by Wifi, Microwave ovens etc
+  radio.setChannel(77);
+
+  radio.enableDynamicAck();
+    radio.enableDynamicPayloads();
+    radio.setAutoAck(true);
+
+  radio.setPayloadSize(PAYLOAD_SIZE);
+  // Open a writing and reading pipe on each radio, with opposite addresses
+  // radio.openWritingPipe(addresses[0]);
+  radio.openReadingPipe(1, addresses[1]);
+
+  // Start the radio listening for data
+  radio.startListening();
 }
 
-void loop()
-{
-    if (radio.available())
-    {
-      //Data input; // Grab the response, compare, and send to debugging spew
-      radio.read(payload, PAYLOAD_SIZE);
-      int * num = (int*)payload;
-      //Serial.print("Got ");
-      Serial.println(*num);
-    }
+// -----------------------------------------------------------------------------
+// We are LISTENING on this device only (although we do transmit a response)
+// -----------------------------------------------------------------------------
+void loop() {
 
-} // Loop
+  // This is what we receive from the other device (the transmitter)
+  if ( radio.available()) {
+    radio.read(payload, PAYLOAD_SIZE);
+
+    int * data = (int *)(payload+4);
+
+    Serial.println(*data);
+  }
+}

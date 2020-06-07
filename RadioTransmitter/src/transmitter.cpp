@@ -1,68 +1,60 @@
-
-/*
-* Getting Started example sketch for nRF24L01+ radios
-* This is a very basic example of how to send data from one node to another
-* Updated: Dec 2014 by TMRh20
-*/
-
+#include "Arduino.h"
 #include <SPI.h>
-#include "RF24.h"
+#include <RF24.h>
 
-/* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
+// This is just the way the RF24 library works:
+// Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
+// TODO MOVE D9 --> D7
 RF24 radio(9, 8);
-/**********************************************************/
 
-byte addresses[][6] = {"trans", "rciev"};
+byte addresses[][6] = {"10000","20000"};
 
-struct Data
-{
-    char str[13]= "radio, gugu!";
-    unsigned long timestamp;
-};
-Data data;
-
-const int PAYLOAD_SIZE = 4;
+const unsigned int PAYLOAD_SIZE = 32;
 char payload[PAYLOAD_SIZE];
 
+// -----------------------------------------------------------------------------
+// SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP
+// -----------------------------------------------------------------------------
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(57600);
+    Serial.println("THIS IS THE TRANSMITTER CODE - YOU NEED THE OTHER ARDIUNO TO SEND BACK A RESPONSE");
+
+    // Initiate the radio object
     radio.begin();
-    radio.setAddressWidth(5);
-    // Set the PA Level low to prevent power supply related issues since this is a
-    // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-    radio.setPALevel(RF24_PA_HIGH);
-    radio.setAutoAck(false);
-    radio.setDataRate(rf24_datarate_e::RF24_250KBPS);
 
-    Serial.println(radio.getPALevel());
-    Serial.println(radio.getARC());
-    
-    radio.disableDynamicPayloads();
+    // Set the transmit power to lowest available to prevent power supply related issues
+    radio.setPALevel(RF24_PA_MAX);
+
+    // Set the speed of the transmission to the quickest available
+    radio.setDataRate(RF24_250KBPS);
+
+    radio.enableDynamicAck();
+    radio.enableDynamicPayloads();
+    radio.setAutoAck(true);
+
+    // Use a channel unlikely to be used by Wifi, Microwave ovens etc
+    radio.setChannel(77);
+
     radio.setPayloadSize(PAYLOAD_SIZE);
+    // Open a writing and reading pipe on each radio, with opposite addresses
+    radio.openWritingPipe(addresses[1]);
+    // radio.openReadingPipe(1, addresses[0]);
 
-  // Open a writing and reading pipe on each radio, with opposite addresses
-  radio.openWritingPipe(addresses[0]);
-  // radio.openReadingPipe(1,addresses[1]);
-  
-  
+    radio.stopListening();
 }
 
+// -----------------------------------------------------------------------------
+// LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP
+// -----------------------------------------------------------------------------
 void loop()
-{
-  int * myNum = (int*)payload;
-  *myNum = *myNum + 1;
-  /****************** Pong Back Role ***************************/
-  //data.timestamp = micros(); // Take the time, and send it.  This will block until complete
-  if (!radio.write(payload, PAYLOAD_SIZE))
-  {
-    Serial.println(F("failed"));
-  }
-  else
-  {
-    Serial.print("Sent radio gugu! at: ");
-    Serial.print(data.timestamp);
-    Serial.print("\n");
-  }
-  _delay_ms(100);
-} // Loop
+{    
+ // This is what transmits data
+    int *data = (int *)(payload + 4);
+    (*data)++;
+
+    if (!radio.write(payload, PAYLOAD_SIZE))
+    {
+        Serial.println("No acknowledgement of transmission - receiving radio device connected?");
+    }
+}
