@@ -2,12 +2,11 @@
 #include <SPI.h>
 #include <RF24.h>
 
-// This is just the way the RF24 library works:
 // Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
-// TODO MOVE D9 --> D7
-RF24 radio(9, 8);
+RF24 radio(7, 8);
 
-byte addresses[][6] = {"10000","20000"};
+// We need only one pipe to Write data
+byte addresses[6] = "10000";
 
 const unsigned int PAYLOAD_SIZE = 32;
 char payload[PAYLOAD_SIZE];
@@ -24,23 +23,26 @@ void setup()
     radio.begin();
 
     // Set the transmit power to lowest available to prevent power supply related issues
-    radio.setPALevel(RF24_PA_MAX);
+    radio.setPALevel(RF24_PA_HIGH);
 
     // Set the speed of the transmission to the quickest available
     radio.setDataRate(RF24_250KBPS);
 
+    //  Enable ack on write
     radio.enableDynamicAck();
-    radio.enableDynamicPayloads();
     radio.setAutoAck(true);
 
     // Use a channel unlikely to be used by Wifi, Microwave ovens etc
     radio.setChannel(77);
 
+    // Set PayloadSize to a fixed width
+    radio.disableDynamicPayloads();
     radio.setPayloadSize(PAYLOAD_SIZE);
-    // Open a writing and reading pipe on each radio, with opposite addresses
-    radio.openWritingPipe(addresses[1]);
-    // radio.openReadingPipe(1, addresses[0]);
 
+    // Open a writing and reading pipe on each radio, with opposite addresses
+    radio.openWritingPipe(addresses);
+
+    // We only need to write data
     radio.stopListening();
 }
 

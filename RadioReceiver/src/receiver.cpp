@@ -6,7 +6,7 @@
 // Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
 RF24 radio(7, 8);
 
-byte addresses[][6] = {"10000","20000"};
+byte addresses[6] = "10000";
 
 
 const unsigned int PAYLOAD_SIZE = 32;
@@ -29,17 +29,21 @@ void setup() {
   // Set the speed of the transmission to the quickest available
   radio.setDataRate(RF24_250KBPS);
 
+  //  Enable ack on write
+  radio.enableDynamicAck();
+  radio.setAutoAck(true);
+
   // Use a channel unlikely to be used by Wifi, Microwave ovens etc
   radio.setChannel(77);
 
-  radio.enableDynamicAck();
-    radio.enableDynamicPayloads();
-    radio.setAutoAck(true);
 
+  // Set PayloadSize to a fixed width
+  radio.disableDynamicPayloads();
   radio.setPayloadSize(PAYLOAD_SIZE);
+  
   // Open a writing and reading pipe on each radio, with opposite addresses
   // radio.openWritingPipe(addresses[0]);
-  radio.openReadingPipe(1, addresses[1]);
+  radio.openReadingPipe(1, addresses);
 
   // Start the radio listening for data
   radio.startListening();
