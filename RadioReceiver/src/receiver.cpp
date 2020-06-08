@@ -1,6 +1,7 @@
 #include "Arduino.h"
 #include <SPI.h>
 #include <RF24.h>
+#include "EnvironmentCalculations.h"
 
 // This is just the way the RF24 library works:
 // Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
@@ -8,16 +9,21 @@ RF24 radio(7, 8);
 
 byte addresses[6] = "10000";
 
+#define SERIAL_BAUD 57600
 
-const unsigned int PAYLOAD_SIZE = 32;
+// Data packet
+#define PRESSURE_OFFSET 0
+#define TEMP_OFFSET 4
+#define HUMIDITY_OFFSET 8
+const unsigned int PAYLOAD_SIZE = 12;
 char payload[PAYLOAD_SIZE];
-
 
 // -----------------------------------------------------------------------------
 // SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP
 // -----------------------------------------------------------------------------
-void setup() {
-  Serial.begin(57600);
+void setup()
+{
+  Serial.begin(SERIAL_BAUD);
   Serial.println("THIS IS THE RECEIVER CODE - YOU NEED THE OTHER ARDUINO TO TRANSMIT");
 
   // Initiate the radio object
@@ -36,11 +42,10 @@ void setup() {
   // Use a channel unlikely to be used by Wifi, Microwave ovens etc
   radio.setChannel(77);
 
-
   // Set PayloadSize to a fixed width
   radio.disableDynamicPayloads();
   radio.setPayloadSize(PAYLOAD_SIZE);
-  
+
   // Open a writing and reading pipe on each radio, with opposite addresses
   // radio.openWritingPipe(addresses[0]);
   radio.openReadingPipe(1, addresses);
@@ -52,14 +57,70 @@ void setup() {
 // -----------------------------------------------------------------------------
 // We are LISTENING on this device only (although we do transmit a response)
 // -----------------------------------------------------------------------------
-void loop() {
+void loop()
+{
 
   // This is what we receive from the other device (the transmitter)
-  if ( radio.available()) {
+  if (radio.available())
+  {
     radio.read(payload, PAYLOAD_SIZE);
 
-    int * data = (int *)(payload+4);
+    // int * data = (int *)(payload+4);
+    float *pres_p = (float *)(payload + PRESSURE_OFFSET);
+    float *temp_p = (float *)(payload + TEMP_OFFSET);
+    float *hum_p = (float *)(payload + HUMIDITY_OFFSET);
 
-    Serial.println(*data);
+    // Serial.println(*data);
+
+    Serial.print("Presure: ");
+    Serial.print(*pres_p);
+    Serial.print("\n");
+
+    Serial.print("Temperature: ");
+    Serial.print(*temp_p);
+    Serial.print("\n");
+
+    Serial.print("Humidity: ");
+    Serial.print(*hum_p);
+    Serial.print("\n");
+
+    // Assumed environmental values:
+    float referencePressure = 1018.6; // hPa local QFF (official meteor-station reading)
+    float outdoorTemp = 4.7;          // °C  measured local outdoor temp.
+    float barometerAltitude = 1650.3; // meters ... map readings + barometer position
+    EnvironmentCalculations::PresUnit presUnit(EnvironmentCalculations::PresUnit_hPa);
+    EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
+    EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
+
+    /// To get correct local altitude/height (QNE) the reference Pressure
+    ///    should be taken from meteorologic messages (QNH or QFF)
+    float altitude = EnvironmentCalculations::Altitude(*pres_p, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
+
+    float dewPoint = EnvironmentCalculations::DewPoint(*temp_p, *hum_p, envTempUnit);
+
+    /// To get correct seaLevel pressure (QNH, QFF)
+    ///    the altitude value should be independent on measured pressure.
+    /// It is necessary to use fixed altitude point e.g. the altitude of barometer read in a map
+    float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, *temp_p, *pres_p, envAltUnit, envTempUnit);
+
+    float absHum = EnvironmentCalculations::AbsoluteHumidity(*temp_p, *hum_p, envTempUnit);
+
+    Serial.print("\t\tAltitude: ");
+    Serial.print(altitude);
+    Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
+    Serial.print("\t\tDew point: ");
+    Serial.print(dewPoint);
+    Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+    Serial.print("\t\tEquivalent Sea Level Pressure: ");
+    Serial.print(seaLevel);
+    Serial.print(String(presUnit == EnvironmentCalculations::PresUnit_hPa ? "hPa" : "Pa")); // expected hPa and Pa only
+
+    Serial.print("\t\tHeat Index: ");
+    float heatIndex = EnvironmentCalculations::HeatIndex(*temp_p, *hum_p, envTempUnit);
+    Serial.print(heatIndex);
+    Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+
+    Serial.print("\t\tAbsolute Humidity: ");
+    Serial.println(absHum);
   }
 }
