@@ -8,8 +8,13 @@ RF24 radio(7, 8);
 // We need only one pipe to Write data
 byte addresses[6] = "10000";
 
-const unsigned int PAYLOAD_SIZE = 32;
+const unsigned int PAYLOAD_SIZE = 4 * sizeof(float);
 char payload[PAYLOAD_SIZE];
+const int TEMP_OFFSET = 0;
+const int HUMIDITY_OFFSET = 4;
+const int PRESSURE_OFFSET = 8;
+const int LIGHT_OFFSET = 12;
+
 
 // -----------------------------------------------------------------------------
 // SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP
@@ -44,6 +49,8 @@ void setup()
 
     // We only need to write data
     radio.stopListening();
+
+    DDRD |= 1 << 2;
 }
 
 // -----------------------------------------------------------------------------
@@ -52,11 +59,25 @@ void setup()
 void loop()
 {    
  // This is what transmits data
-    int *data = (int *)(payload + 4);
-    (*data)++;
+    float * temp = (float *)(payload + TEMP_OFFSET);
+    float * hum = (float *)(payload + HUMIDITY_OFFSET);
+    float * pres = (float *)(payload + PRESSURE_OFFSET);
+    float * light = (float *)(payload + LIGHT_OFFSET);
+
+    (*temp)+=0;
+    (*hum)+=4;
+    (*pres)+=8;
+    (*light)+=12;
 
     if (!radio.write(payload, PAYLOAD_SIZE))
     {
         Serial.println("No acknowledgement of transmission - receiving radio device connected?");
     }
+    else
+    {
+        PORTD |=  1<< 2;
+        _delay_ms(250);
+        PORTD &= ~(1 << 2);
+    }
+    
 }
