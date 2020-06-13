@@ -1,6 +1,21 @@
 #include "Arduino.h"
 #include <SPI.h>
 #include <RF24.h>
+#include <BME280I2C.h>
+#include <Wire.h>
+
+// Hardware configuration to setup BME280 sensor
+BME280I2C::Settings settings(
+    BME280::OSR_X1,
+    BME280::OSR_X1,
+    BME280::OSR_X1,
+    BME280::Mode_Forced,
+    BME280::StandbyTime_1000ms,
+    BME280::Filter_16,
+    BME280::SpiEnable_False,
+    BME280I2C::I2CAddr_0x76);
+
+BME280I2C bme(settings);
 
 // Hardware configuration: Set up nRF24L01 radio on SPI bus (pins 10, 11, 12, 13) plus pins 7 & 8
 RF24 radio(7, 8);
@@ -15,7 +30,6 @@ const int HUMIDITY_OFFSET = 4;
 const int PRESSURE_OFFSET = 8;
 const int LIGHT_OFFSET = 12;
 
-
 // -----------------------------------------------------------------------------
 // SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP   SETUP
 // -----------------------------------------------------------------------------
@@ -23,6 +37,26 @@ void setup()
 {
     Serial.begin(57600);
     Serial.println("THIS IS THE TRANSMITTER CODE - YOU NEED THE OTHER ARDIUNO TO SEND BACK A RESPONSE");
+
+    Wire.begin();
+
+    while (!bme.begin())
+    {
+        Serial.println("Could not find BME280 sensor!");
+        delay(1000);
+    }
+
+    switch (bme.chipModel())
+    {
+    case BME280::ChipModel_BME280:
+        Serial.println("Found BME280 sensor! Success.");
+        break;
+    case BME280::ChipModel_BMP280:
+        Serial.println("Found BMP280 sensor! No Humidity available.");
+        break;
+    default:
+        Serial.println("Found UNKNOWN sensor! Error!");
+    }
 
     // Initiate the radio object
     radio.begin();
@@ -57,17 +91,18 @@ void setup()
 // LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP
 // -----------------------------------------------------------------------------
 void loop()
-{    
- // This is what transmits data
-    float * temp = (float *)(payload + TEMP_OFFSET);
-    float * hum = (float *)(payload + HUMIDITY_OFFSET);
-    float * pres = (float *)(payload + PRESSURE_OFFSET);
-    float * light = (float *)(payload + LIGHT_OFFSET);
+{
+    // This is what transmits data
+    float *temp = (float *)(payload + TEMP_OFFSET);
+    float *hum = (float *)(payload + HUMIDITY_OFFSET);
+    float *pres = (float *)(payload + PRESSURE_OFFSET);
+    float *light = (float *)(payload + LIGHT_OFFSET);
 
-    (*temp)+=0;
-    (*hum)+=4;
-    (*pres)+=8;
-    (*light)+=12;
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+    BME280::PresUnit presUnit(BME280::PresUnit_hPa);
+
+    bme.read(*pres, *temp, *hum, tempUnit, presUnit);
+    (*light) += 12;
 
     if (!radio.write(payload, PAYLOAD_SIZE))
     {
@@ -75,9 +110,8 @@ void loop()
     }
     else
     {
-        PORTD |=  1<< 2;
+        PORTD |= 1 << 2;
         _delay_ms(250);
         PORTD &= ~(1 << 2);
     }
-    
 }
