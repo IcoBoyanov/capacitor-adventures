@@ -48,8 +48,7 @@ void setup()
   radio.disableDynamicPayloads();
   radio.setPayloadSize(PAYLOAD_SIZE);
 
-  // Open a writing and reading pipe on each radio, with opposite addresses
-  // radio.openWritingPipe(addresses[0]);
+  // Open a writing and reading pipe on each radio, with same addresses
   radio.openReadingPipe(1, addresses);
 
   // Start the radio listening for data
@@ -67,7 +66,6 @@ void loop()
   {
     radio.read(payload, PAYLOAD_SIZE);
 
-    // int * data = (int *)(payload+4);
     float *pres = (float *)(payload + PRESSURE_OFFSET);
     float *temp = (float *)(payload + TEMP_OFFSET);
     float *hum = (float *)(payload + HUMIDITY_OFFSET);
@@ -78,7 +76,6 @@ void loop()
     const int PRESSURE_WIDTH = 4;
     const int TEMPERATURE_WIDTH = 3;
     const int HUMIDITY_WIDTH = 4;
-    const int LIGHT_WIDTH = 3;
 
     char str_pres[PRESSURE_WIDTH +  PRECISION + DOT];
     char str_temp[TEMPERATURE_WIDTH +  PRECISION + DOT];

@@ -62,8 +62,9 @@ void setup()
     // Initiate the radio object
     radio.begin();
 
-    // Set the transmit power to lowest available to prevent power supply related issues
-    radio.setPALevel(RF24_PA_HIGH);
+    // max power - this is the normal module, so it is 0 dBm (1 mW)
+    // also it has a capacitor on the supply pins
+    radio.setPALevel(RF24_PA_MAX);
 
     // Set the speed of the transmission to the quickest available
     radio.setDataRate(RF24_250KBPS);
@@ -79,7 +80,7 @@ void setup()
     radio.disableDynamicPayloads();
     radio.setPayloadSize(PAYLOAD_SIZE);
 
-    // Open a writing and reading pipe on each radio, with opposite addresses
+    // Open a writing and reading pipe on each radio, with same addresses
     radio.openWritingPipe(addresses);
 
     // We only need to write data
@@ -88,9 +89,6 @@ void setup()
     DDRD |= 1 << 2;
 }
 
-// -----------------------------------------------------------------------------
-// LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP     LOOP
-// -----------------------------------------------------------------------------
 void loop()
 {
     // This is what transmits data
@@ -104,6 +102,8 @@ void loop()
 
     bme.read(*pres, *temp, *hum, tempUnit, presUnit);
     
+    // send the 16 bit val directly
+    // todo also measure battery voltage
     *light = analogRead(A3);
 
     if (!radio.write(payload, PAYLOAD_SIZE))
