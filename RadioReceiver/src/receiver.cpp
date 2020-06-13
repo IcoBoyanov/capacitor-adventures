@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include <stdint.h>
 #include <SPI.h>
 #include <RF24.h>
 #include "EnvironmentCalculations.h"
@@ -16,7 +17,7 @@ const int TEMP_OFFSET = 0;
 const int HUMIDITY_OFFSET = 4;
 const int PRESSURE_OFFSET = 8;
 const int LIGHT_OFFSET = 12;
-const unsigned int PAYLOAD_SIZE = 4 * sizeof(float);
+const unsigned int PAYLOAD_SIZE = 3 * sizeof(float) + sizeof(uint16_t);
 char payload[PAYLOAD_SIZE];
 
 // -----------------------------------------------------------------------------
@@ -70,7 +71,7 @@ void loop()
     float *pres = (float *)(payload + PRESSURE_OFFSET);
     float *temp = (float *)(payload + TEMP_OFFSET);
     float *hum = (float *)(payload + HUMIDITY_OFFSET);
-    float *light = (float *)(payload + LIGHT_OFFSET);
+    uint16_t *light = (uint16_t *)(payload + LIGHT_OFFSET);
 
     const int DOT = 2;// +2 for dot and \0
     const int PRECISION = 2; 
@@ -82,19 +83,19 @@ void loop()
     char str_pres[PRESSURE_WIDTH +  PRECISION + DOT];
     char str_temp[TEMPERATURE_WIDTH +  PRECISION + DOT];
     char str_hum[HUMIDITY_WIDTH +  PRECISION + DOT];
-    char str_light[LIGHT_WIDTH +  PRECISION + DOT];
 
     // char *dtostrf(double val, signed char width, unsigned char prec, char *s)
     dtostrf(*pres, PRESSURE_WIDTH, PRECISION, str_pres);
     dtostrf(*temp, TEMPERATURE_WIDTH, PRECISION, str_temp);
     dtostrf(*hum, HUMIDITY_WIDTH, PRECISION, str_hum);
-    dtostrf(*light, LIGHT_WIDTH, PRECISION, str_light);
     char buff[128];
-    sprintf(buff, "{\"pressure\":\"%s\",\"temperature\":\"%s\",\"humidity\":\"%s\",\"light\":\"%s\"}\0", str_pres, str_temp, str_hum, str_light);
-    Serial.println(*hum);
-    Serial.println(str_hum);
-    Serial.println(*temp);
-    Serial.println(str_temp);
+    sprintf(buff, "{\"pressure\":\"%s\",\"temperature\":\"%s\",\"humidity\":\"%s\",\"light\":\"%d\"}\0", str_pres, str_temp, str_hum, int(*light));
+    //Serial.println(*hum);
+    //Serial.println(str_hum);
+    //Serial.println(*temp);
+    //Serial.println(str_temp);
+    
+    // send only json
     Serial.println(buff);
 
     // Serial.print("Presure: ");

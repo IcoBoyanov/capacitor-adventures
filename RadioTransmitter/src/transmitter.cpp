@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include <stdint.h>
 #include <SPI.h>
 #include <RF24.h>
 #include <BME280I2C.h>
@@ -23,7 +24,7 @@ RF24 radio(7, 8);
 // We need only one pipe to Write data
 byte addresses[6] = "10000";
 
-const unsigned int PAYLOAD_SIZE = 4 * sizeof(float);
+const unsigned int PAYLOAD_SIZE = 3 * sizeof(float) + sizeof(uint16_t);
 char payload[PAYLOAD_SIZE];
 const int TEMP_OFFSET = 0;
 const int HUMIDITY_OFFSET = 4;
@@ -96,13 +97,14 @@ void loop()
     float *temp = (float *)(payload + TEMP_OFFSET);
     float *hum = (float *)(payload + HUMIDITY_OFFSET);
     float *pres = (float *)(payload + PRESSURE_OFFSET);
-    float *light = (float *)(payload + LIGHT_OFFSET);
+    uint16_t *light = (uint16_t *)(payload + LIGHT_OFFSET);
 
     BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
     BME280::PresUnit presUnit(BME280::PresUnit_hPa);
 
     bme.read(*pres, *temp, *hum, tempUnit, presUnit);
-    (*light) += 12;
+    
+    *light = analogRead(A3);
 
     if (!radio.write(payload, PAYLOAD_SIZE))
     {
@@ -111,7 +113,8 @@ void loop()
     else
     {
         PORTD |= 1 << 2;
-        _delay_ms(250);
+        _delay_ms(125);
         PORTD &= ~(1 << 2);
+        _delay_ms(125);
     }
 }
