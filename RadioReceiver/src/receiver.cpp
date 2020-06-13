@@ -72,57 +72,80 @@ void loop()
     float *hum = (float *)(payload + HUMIDITY_OFFSET);
     float *light = (float *)(payload + LIGHT_OFFSET);
 
-    // Serial.println(*data);
+    const int DOT = 2;// +2 for dot and \0
+    const int PRECISION = 2; 
+    const int PRESSURE_WIDTH = 4;
+    const int TEMPERATURE_WIDTH = 3;
+    const int HUMIDITY_WIDTH = 4;
+    const int LIGHT_WIDTH = 3;
 
-    Serial.print("Presure: ");
-    Serial.print(*pres);
-    Serial.print("\n");
+    char str_pres[PRESSURE_WIDTH +  PRECISION + DOT];
+    char str_temp[TEMPERATURE_WIDTH +  PRECISION + DOT];
+    char str_hum[HUMIDITY_WIDTH +  PRECISION + DOT];
+    char str_light[LIGHT_WIDTH +  PRECISION + DOT];
 
-    Serial.print("Temperature: ");
-    Serial.print(*temp);
-    Serial.print("\n");
+    // char *dtostrf(double val, signed char width, unsigned char prec, char *s)
+    dtostrf(*pres, PRESSURE_WIDTH, PRECISION, str_pres);
+    dtostrf(*temp, TEMPERATURE_WIDTH, PRECISION, str_temp);
+    dtostrf(*hum, HUMIDITY_WIDTH, PRECISION, str_hum);
+    dtostrf(*light, LIGHT_WIDTH, PRECISION, str_light);
+    char buff[128];
+    sprintf(buff, "{\"pressure\":\"%s\",\"temperature\":\"%s\",\"humidity\":\"%s\",\"light\":\"%s\"}\0", str_pres, str_temp, str_hum, str_light);
+    Serial.println(*hum);
+    Serial.println(str_hum);
+    Serial.println(*temp);
+    Serial.println(str_temp);
+    Serial.println(buff);
 
-    Serial.print("Humidity: ");
-    Serial.print(*hum);
-    Serial.print("\n");
+    // Serial.print("Presure: ");
+    // Serial.print(*pres);
+    // Serial.print("\n");
 
-    // Assumed environmental values:
-    float referencePressure = 1018.6; // hPa local QFF (official meteor-station reading)
-    float outdoorTemp = 4.7;          // °C  measured local outdoor temp.
-    float barometerAltitude = 1650.3; // meters ... map readings + barometer position
-    EnvironmentCalculations::PresUnit presUnit(EnvironmentCalculations::PresUnit_hPa);
-    EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
-    EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
+    // Serial.print("Temperature: ");
+    // Serial.print(*temp);
+    // Serial.print("\n");
 
-    /// To get correct local altitude/height (QNE) the reference Pressure
-    ///    should be taken from meteorologic messages (QNH or QFF)
-    float altitude = EnvironmentCalculations::Altitude(*pres, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
+    // Serial.print("Humidity: ");
+    // Serial.print(*hum);
+    // Serial.print("\n");
 
-    float dewPoint = EnvironmentCalculations::DewPoint(*temp, *hum, envTempUnit);
+    // // Assumed environmental values:
+    // float referencePressure = 1018.6; // hPa local QFF (official meteor-station reading)
+    // float outdoorTemp = 4.7;          // °C  measured local outdoor temp.
+    // float barometerAltitude = 1650.3; // meters ... map readings + barometer position
+    // EnvironmentCalculations::PresUnit presUnit(EnvironmentCalculations::PresUnit_hPa);
+    // EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
+    // EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
 
-    /// To get correct seaLevel pressure (QNH, QFF)
-    ///    the altitude value should be independent on measured pressure.
-    /// It is necessary to use fixed altitude point e.g. the altitude of barometer read in a map
-    float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, *temp, *pres, envAltUnit, envTempUnit);
+    // /// To get correct local altitude/height (QNE) the reference Pressure
+    // ///    should be taken from meteorologic messages (QNH or QFF)
+    // float altitude = EnvironmentCalculations::Altitude(*pres, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
 
-    float absHum = EnvironmentCalculations::AbsoluteHumidity(*temp, *hum, envTempUnit);
+    // float dewPoint = EnvironmentCalculations::DewPoint(*temp, *hum, envTempUnit);
 
-    Serial.print("\t\tAltitude: ");
-    Serial.print(altitude);
-    Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
-    Serial.print("\t\tDew point: ");
-    Serial.print(dewPoint);
-    Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
-    Serial.print("\t\tEquivalent Sea Level Pressure: ");
-    Serial.print(seaLevel);
-    Serial.print(String(presUnit == EnvironmentCalculations::PresUnit_hPa ? "hPa" : "Pa")); // expected hPa and Pa only
+    // /// To get correct seaLevel pressure (QNH, QFF)
+    // ///    the altitude value should be independent on measured pressure.
+    // /// It is necessary to use fixed altitude point e.g. the altitude of barometer read in a map
+    // float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, *temp, *pres, envAltUnit, envTempUnit);
 
-    Serial.print("\t\tHeat Index: ");
-    float heatIndex = EnvironmentCalculations::HeatIndex(*temp, *hum, envTempUnit);
-    Serial.print(heatIndex);
-    Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+    // float absHum = EnvironmentCalculations::AbsoluteHumidity(*temp, *hum, envTempUnit);
 
-    Serial.print("\t\tAbsolute Humidity: ");
-    Serial.println(absHum);
+    // Serial.print("\t\tAltitude: ");
+    // Serial.print(altitude);
+    // Serial.print((envAltUnit == EnvironmentCalculations::AltitudeUnit_Meters ? "m" : "ft"));
+    // Serial.print("\t\tDew point: ");
+    // Serial.print(dewPoint);
+    // Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+    // Serial.print("\t\tEquivalent Sea Level Pressure: ");
+    // Serial.print(seaLevel);
+    // Serial.print(String(presUnit == EnvironmentCalculations::PresUnit_hPa ? "hPa" : "Pa")); // expected hPa and Pa only
+
+    // Serial.print("\t\tHeat Index: ");
+    // float heatIndex = EnvironmentCalculations::HeatIndex(*temp, *hum, envTempUnit);
+    // Serial.print(heatIndex);
+    // Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
+
+    // Serial.print("\t\tAbsolute Humidity: ");
+    // Serial.println(absHum);
   }
 }
