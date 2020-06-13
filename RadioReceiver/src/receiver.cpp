@@ -12,10 +12,11 @@ byte addresses[6] = "10000";
 #define SERIAL_BAUD 57600
 
 // Data packet
-#define PRESSURE_OFFSET 0
-#define TEMP_OFFSET 4
-#define HUMIDITY_OFFSET 8
-const unsigned int PAYLOAD_SIZE = 12;
+const int TEMP_OFFSET = 0;
+const int HUMIDITY_OFFSET = 4;
+const int PRESSURE_OFFSET = 8;
+const int LIGHT_OFFSET = 12;
+const unsigned int PAYLOAD_SIZE = 4 * sizeof(float);
 char payload[PAYLOAD_SIZE];
 
 // -----------------------------------------------------------------------------
@@ -66,22 +67,23 @@ void loop()
     radio.read(payload, PAYLOAD_SIZE);
 
     // int * data = (int *)(payload+4);
-    float *pres_p = (float *)(payload + PRESSURE_OFFSET);
-    float *temp_p = (float *)(payload + TEMP_OFFSET);
-    float *hum_p = (float *)(payload + HUMIDITY_OFFSET);
+    float *pres = (float *)(payload + PRESSURE_OFFSET);
+    float *temp = (float *)(payload + TEMP_OFFSET);
+    float *hum = (float *)(payload + HUMIDITY_OFFSET);
+    float *light = (float *)(payload + LIGHT_OFFSET);
 
     // Serial.println(*data);
 
     Serial.print("Presure: ");
-    Serial.print(*pres_p);
+    Serial.print(*pres);
     Serial.print("\n");
 
     Serial.print("Temperature: ");
-    Serial.print(*temp_p);
+    Serial.print(*temp);
     Serial.print("\n");
 
     Serial.print("Humidity: ");
-    Serial.print(*hum_p);
+    Serial.print(*hum);
     Serial.print("\n");
 
     // Assumed environmental values:
@@ -94,16 +96,16 @@ void loop()
 
     /// To get correct local altitude/height (QNE) the reference Pressure
     ///    should be taken from meteorologic messages (QNH or QFF)
-    float altitude = EnvironmentCalculations::Altitude(*pres_p, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
+    float altitude = EnvironmentCalculations::Altitude(*pres, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
 
-    float dewPoint = EnvironmentCalculations::DewPoint(*temp_p, *hum_p, envTempUnit);
+    float dewPoint = EnvironmentCalculations::DewPoint(*temp, *hum, envTempUnit);
 
     /// To get correct seaLevel pressure (QNH, QFF)
     ///    the altitude value should be independent on measured pressure.
     /// It is necessary to use fixed altitude point e.g. the altitude of barometer read in a map
-    float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, *temp_p, *pres_p, envAltUnit, envTempUnit);
+    float seaLevel = EnvironmentCalculations::EquivalentSeaLevelPressure(barometerAltitude, *temp, *pres, envAltUnit, envTempUnit);
 
-    float absHum = EnvironmentCalculations::AbsoluteHumidity(*temp_p, *hum_p, envTempUnit);
+    float absHum = EnvironmentCalculations::AbsoluteHumidity(*temp, *hum, envTempUnit);
 
     Serial.print("\t\tAltitude: ");
     Serial.print(altitude);
@@ -116,7 +118,7 @@ void loop()
     Serial.print(String(presUnit == EnvironmentCalculations::PresUnit_hPa ? "hPa" : "Pa")); // expected hPa and Pa only
 
     Serial.print("\t\tHeat Index: ");
-    float heatIndex = EnvironmentCalculations::HeatIndex(*temp_p, *hum_p, envTempUnit);
+    float heatIndex = EnvironmentCalculations::HeatIndex(*temp, *hum, envTempUnit);
     Serial.print(heatIndex);
     Serial.print("°" + String(envTempUnit == EnvironmentCalculations::TempUnit_Celsius ? "C" : "F"));
 
